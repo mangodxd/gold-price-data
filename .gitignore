@@ -18,5 +18,6 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Export artifacts (keep .gitkeep)
+# Export artifacts — keep .gitkeep, CSVs committed by workflows
 exports/*.csv
+!exports/.gitkeep

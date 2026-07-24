@@ -1,0 +1,37 @@
+name: Gold Analytics & Export
+
+on:
+  schedule:
+    - cron: "5 17 * * *"
+  workflow_dispatch:
+
+jobs:
+  analytics:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_PATH: data/gold_pipeline.db
+      LOG_LEVEL: INFO
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run analytics and export CSVs
+        run: python src/main.py analytics
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push exports
+        run: |
+          git add -f exports/*.csv
+          git diff --staged --quiet || git commit -m "chore(export): add daily CSVs for $(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d --date='-1 day')"
+          git push
