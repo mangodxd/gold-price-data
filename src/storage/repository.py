@@ -182,6 +182,40 @@ class Repository:
             },
         )
 
+    def get_raw_records_in_range(
+        self,
+        table_name: str,
+        start_utc: str,
+        end_utc: str,
+    ) -> list[dict[str, Any]]:
+        """Get all records from a table within a UTC time range.
+
+        Args:
+            table_name: Name of the target table.
+            start_utc: Start of range (ISO 8601 UTC).
+            end_utc: End of range (ISO 8601 UTC).
+
+        Returns:
+            List of row dicts ordered by recorded_at ASC.
+
+        Raises:
+            StorageError: If table_name is unknown.
+        """
+        model_class = MODEL_MAP.get(table_name)
+        if model_class is None:
+            raise StorageError(f"Unknown table: {table_name}")
+
+        with self.engine.begin() as conn:
+            rows = conn.execute(
+                text(
+                    f"SELECT * FROM {table_name} "
+                    "WHERE recorded_at BETWEEN :start AND :end "
+                    "ORDER BY recorded_at ASC"
+                ),
+                {"start": start_utc, "end": end_utc},
+            ).fetchall()
+            return [dict(r._mapping) for r in rows]
+
     def is_stale(
         self,
         table_name: str,
