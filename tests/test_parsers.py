@@ -12,6 +12,8 @@ from src.parsers.domestic import (
     parse_timestamp,
     validate_item,
 )
+from src.parsers.fx import parse_response as fx_parse
+from src.parsers.world import parse_response as world_parse
 
 UTC_2024_11_24 = datetime(2024, 11, 24, 13, 59, 49, tzinfo=UTC)
 
@@ -39,6 +41,8 @@ SAMPLE_RESPONSE = {
         },
     ],
 }
+
+# ---------- Domestic Gold Parser Tests ----------
 
 
 class TestInferCategory:
@@ -138,7 +142,7 @@ class TestParseItem:
         assert parse_item(item) is None
 
 
-class TestParseResponse:
+class TestDomesticParseResponse:
     """Full response parsing."""
 
     def test_full_response(self) -> None:
@@ -185,3 +189,121 @@ class TestParseResponse:
         records = parse_response(resp)
         assert len(records) == 1
         assert records[0]["product_name"] == "SJL1L10"
+
+
+# ---------- World Gold Parser Tests ----------
+
+WORLD_SAMPLE = {
+    "xau": {"price": 4061.7, "currency": "USD", "unit": "troy_oz"},
+    "spot_usd_oz": 4061.7,
+    "per_gram_usd": 130.59,
+    "per_kg_usd": 130590.0,
+    "updated_at": "2026-07-24T14:50:09.811Z",
+    "data_state": {"status": "fresh"},
+}
+
+
+class TestWorldParser:
+    """World gold (xaus.com) parser tests."""
+
+    def test_valid_response(self) -> None:
+        """Valid response returns one record."""
+        records = world_parse(WORLD_SAMPLE)
+        assert len(records) == 1
+        assert records[0]["source"] == "xaus.com"
+        assert records[0]["spot_usd_oz"] == 4061.7
+        assert records[0]["per_gram_usd"] == 130.59
+        assert records[0]["currency"] == "USD"
+        assert records[0]["unit"] == "troy_oz"
+
+    def test_stale_data_skipped(self) -> None:
+        """Stale data_state returns empty list."""
+        resp = dict(WORLD_SAMPLE)
+        resp["data_state"] = {"status": "stale"}
+        assert world_parse(resp) == []
+
+    def test_unavailable_data_skipped(self) -> None:
+        """Unavailable data_state returns empty list."""
+        resp = dict(WORLD_SAMPLE)
+        resp["data_state"] = {"status": "unavailable"}
+        assert world_parse(resp) == []
+
+    def test_missing_data_state(self) -> None:
+        """Missing data_state returns empty list."""
+        resp = dict(WORLD_SAMPLE)
+        resp.pop("data_state")
+        assert world_parse(resp) == []
+
+    def test_negative_spot_price(self) -> None:
+        """Negative spot price returns empty list."""
+        resp = dict(WORLD_SAMPLE)
+        resp["spot_usd_oz"] = -1
+        assert world_parse(resp) == []
+
+    def test_missing_spot_usd_oz(self) -> None:
+        """Missing spot_usd_oz returns empty list."""
+        resp = dict(WORLD_SAMPLE)
+        resp.pop("spot_usd_oz")
+        assert world_parse(resp) == []
+
+    def test_optional_per_kg_none(self) -> None:
+        """per_kg_usd can be None."""
+        resp = dict(WORLD_SAMPLE)
+        resp["per_kg_usd"] = None
+        records = world_parse(resp)
+        assert records[0]["per_kg_usd"] is None
+
+    def test_not_a_dict_raises(self) -> None:
+        """Non-dict input raises ValidationError."""
+        with pytest.raises(ValidationError):
+            world_parse("not a dict")  # type: ignore[arg-type]
+
+
+# ---------- FX Rate Parser Tests ----------
+
+FX_SAMPLE = {
+    "base": "USD",
+    "date": "2026-07-24",
+    "rates": {"VND": 24350.00},
+}
+
+
+class TestFXParser:
+    """FX rate (exchangerate.fun) parser tests."""
+
+    def test_valid_response(self) -> None:
+        """Valid response returns one record."""
+        records = fx_parse(FX_SAMPLE)
+        assert len(records) == 1
+        assert records[0]["base_currency"] == "USD"
+        assert records[0]["target_currency"] == "VND"
+        assert records[0]["rate"] == 24350.00
+
+    def test_missing_vnd_rate(self) -> None:
+        """Missing rates.VND returns empty list."""
+        resp = dict(FX_SAMPLE)
+        resp["rates"] = {}
+        assert fx_parse(resp) == []
+
+    def test_zero_rate(self) -> None:
+        """Zero rate returns empty list."""
+        resp = dict(FX_SAMPLE)
+        resp["rates"] = {"VND": 0}
+        assert fx_parse(resp) == []
+
+    def test_negative_rate(self) -> None:
+        """Negative rate returns empty list."""
+        resp = dict(FX_SAMPLE)
+        resp["rates"] = {"VND": -1}
+        assert fx_parse(resp) == []
+
+    def test_missing_rates_key(self) -> None:
+        """Missing rates key returns empty list."""
+        resp = dict(FX_SAMPLE)
+        resp.pop("rates")
+        assert fx_parse(resp) == []
+
+    def test_not_a_dict_raises(self) -> None:
+        """Non-dict input raises ValidationError."""
+        with pytest.raises(ValidationError):
+            fx_parse([])  # type: ignore[arg-type]
