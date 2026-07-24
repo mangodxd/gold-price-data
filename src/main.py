@@ -133,10 +133,10 @@ def run_collect() -> int:
 
 
 def run_analytics() -> int:
-    """Execute the analytics and CSV export pipeline.
+    """Execute the analytics pipeline (OHLC computation only).
 
     Delegates to src.analytics.ohlc.run_analytics() for OHLC
-    computation, then exports daily CSVs.
+    computation. No CSV export — use run_export() for that.
 
     Returns:
         0 on success, 1 on failure.
@@ -146,17 +146,14 @@ def run_analytics() -> int:
     repo = Repository(engine=engine)
 
     from src.analytics.ohlc import run_analytics as _run_analytics_core
-    from src.export.csv_writer import export_daily_csvs as _export_csvs
 
     _run_analytics_core(repo=repo)
-    csv_files = _export_csvs(repo)
-    logger.info("Exported %d CSV files", len(csv_files))
 
     return 0
 
 
 def run_export() -> int:
-    """Execute CSV export only.
+    """Export a single combined CSV snapshot of all 3 data tables.
 
     Returns:
         0 on success, 1 on failure.
@@ -166,10 +163,10 @@ def run_export() -> int:
     engine = create_db_engine()
     repo = Repository(engine=engine)
 
-    from src.export.csv_writer import export_daily_csvs as _export_csvs
+    from src.export.csv_writer import export_snapshot as _export_snapshot
 
-    csv_files = _export_csvs(repo)
-    logger.info("Exported %d CSV files", len(csv_files))
+    path = _export_snapshot(repo)
+    logger.info("Exported snapshot: %s", path.name)
     return 0
 
 

@@ -35,7 +35,7 @@
 │  GitHub Actions (cron)                                   │
 │  ┌──────────────────────┐  ┌────────────────────────┐   │
 │  │  collect.yml         │  │  analytics.yml         │   │
-│  │  every 5 min         │  │  every hour     │   │
+│  │  every 5 min         │  │  hourly snapshot     │   │
 │  └──────────┬───────────┘  └───────────┬────────────┘   │
 └─────────────┼──────────────────────────┼────────────────┘
               │                          │
@@ -85,7 +85,7 @@
 | **ci.yml** | Push / PR to `master` | Lint (ruff) + test (pytest) |
 
 - ~288 collection runs/day
-- ~24 analytics + export commits/day (hourly CSV snapshots)
+- ~24 snapshot commits/day (hourly combined CSV)
 - ~26,000 API calls/month across all collectors (3 APIs × 288 runs/day × 30 days)
 - Entirely GitHub Actions free tier (no server, no cost)
 
@@ -116,7 +116,7 @@ pytest tests/ -v
 ```
 ├── .github/workflows/
 │   ├── collect.yml          # Every 5 min collection
-│   ├── analytics.yml        # Hourly OHLC + CSV export
+│   ├── analytics.yml        # Hourly OHLC + snapshot export
 │   └── ci.yml               # Lint + test on push
 ├── src/
 │   ├── collectors/          # 3 async HTTP collectors
@@ -138,7 +138,7 @@ pytest tests/ -v
 │   └── main.py              # Orchestrator entry point
 ├── tests/                   # 109 tests, 90% coverage
 ├── docs/                    # Architecture docs
-├── exports/                 # Daily CSV exports
+├── exports/                 # Hourly CSV snapshots
 ├── requirements.txt
 └── pyproject.toml
 ```

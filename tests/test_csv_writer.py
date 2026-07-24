@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from src.export.csv_writer import _write_csv, export_daily_csvs
+from src.export.csv_writer import SNAPSHOT_COLUMNS, _write_csv, export_snapshot
 from src.storage.repository import Repository
 
 
@@ -24,13 +24,10 @@ class TestWriteCSV:
             ]
             _write_csv(filepath, columns, rows)
 
-            # Check BOM via raw bytes (utf-8-sig writes BOM on write
-            # and strips it on read, so check raw bytes)
             with open(filepath, "rb") as f:
                 raw = f.read(3)
             assert raw == b"\xef\xbb\xbf"
 
-            # Read with utf-8-sig for DictReader (BOM stripped automatically)
             with open(filepath, newline="", encoding="utf-8-sig") as f:
                 reader = csv.DictReader(f)
                 assert reader.fieldnames == columns
@@ -45,12 +42,10 @@ class TestWriteCSV:
             columns = ["col_a", "col_b"]
             _write_csv(filepath, columns, [])
 
-            # Check BOM via raw bytes
             with open(filepath, "rb") as f:
                 raw = f.read(3)
             assert raw == b"\xef\xbb\xbf"
 
-            # Read with utf-8-sig for DictReader (BOM stripped)
             with open(filepath, newline="", encoding="utf-8-sig") as f:
                 content = f.read()
             assert "col_a" in content
@@ -61,7 +56,7 @@ class TestWriteCSV:
         with TemporaryDirectory() as tmp:
             filepath = Path(tmp) / "partial.csv"
             columns = ["a", "b", "c"]
-            rows = [{"a": "x", "c": "z"}]  # 'b' missing
+            rows = [{"a": "x", "c": "z"}]
             _write_csv(filepath, columns, rows)
 
             with open(filepath, newline="", encoding="utf-8-sig") as f:
@@ -72,8 +67,8 @@ class TestWriteCSV:
                 assert row["c"] == "z"
 
 
-class TestExportDailyCSVs:
-    """Full CSV export against in-memory data."""
+class TestExportSnapshot:
+    """Combined snapshot CSV export."""
 
     def _seed_data(self, repo: Repository) -> None:
         """Insert sample data for all 3 tables."""
@@ -109,33 +104,45 @@ class TestExportDailyCSVs:
             },
         )
 
-    def test_exports_three_files(self, repo: Repository) -> None:
-        """Three CSV files created with data rows."""
+    def test_snapshot_contains_all_tables(self, repo: Repository) -> None:
+        """Snapshot includes rows from all 3 tables with correct table labels."""
         self._seed_data(repo)
-        files = export_daily_csvs(repo, "2026-07-24")
-        assert len(files) == 3
+        path = export_snapshot(repo, "2026-07-24")
 
-        # Verify file names
-        names = [f.name for f in files]
-        assert "gold_prices_2026-07-24.csv" in names
-        assert "world_gold_prices_2026-07-24.csv" in names
-        assert "exchange_rates_2026-07-24.csv" in names
+        assert path.name.startswith("snapshot_")
+        assert path.suffix == ".csv"
 
-        # Verify no id column in any file
-        for filepath in files:
-            with open(filepath, newline="", encoding="utf-8-sig") as f:
-                reader = csv.DictReader(f)
-                assert "id" not in (reader.fieldnames or [])
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            assert reader.fieldnames == SNAPSHOT_COLUMNS
+            rows = list(reader)
 
-        # Cleanup
-        for filepath in files:
-            filepath.unlink()
+        assert len(rows) == 3  # 1 gold + 1 world + 1 fx
 
-    def test_exports_empty_tables(self, repo: Repository) -> None:
-        """Empty tables produce header-only files."""
-        files = export_daily_csvs(repo, "2026-07-24")
-        for filepath in files:
-            with open(filepath, newline="", encoding="utf-8-sig") as f:
-                lines = f.readlines()
-            assert len(lines) == 1  # header only
-            filepath.unlink()
+        tables = {r["table"] for r in rows}
+        assert tables == {"gold", "world", "fx"}
+
+        # Check gold row
+        gold = [r for r in rows if r["table"] == "gold"][0]
+        assert gold["type"] == "SJL1L10"
+        assert gold["buy"] == "85500000"
+        assert gold["sell"] == "88000000"
+
+        # Check world row
+        world = [r for r in rows if r["table"] == "world"][0]
+        assert world["spot"] == "4061.7"
+        assert world["currency"] == "USD"
+
+        # Check fx row
+        fx = [r for r in rows if r["table"] == "fx"][0]
+        assert fx["rate"] == "24350.0"
+
+        path.unlink()
+
+    def test_snapshot_empty_day(self, repo: Repository) -> None:
+        """Empty day produces header-only file."""
+        path = export_snapshot(repo, "2026-07-24")
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 0
+        path.unlink()

@@ -44,10 +44,18 @@ def yesterday_vietnam() -> str:
     Returns:
         Date string in YYYY-MM-DD format.
     """
-    today_utc = datetime.now(UTC)
-    today_vn = today_utc.astimezone(VIETNAM_TZ)
-    yesterday_vn = today_vn - timedelta(days=1)
+    vn_now = datetime.now(UTC).astimezone(VIETNAM_TZ)
+    yesterday_vn = vn_now - timedelta(days=1)
     return yesterday_vn.strftime("%Y-%m-%d")
+
+
+def today_vietnam() -> str:
+    """Get today's date in Vietnam timezone (YYYY-MM-DD).
+
+    Returns:
+        Date string in YYYY-MM-DD format.
+    """
+    return datetime.now(UTC).astimezone(VIETNAM_TZ).strftime("%Y-%m-%d")
 
 
 def compute_ohlc(prices: list[float]) -> dict[str, float | None]:
