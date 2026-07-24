@@ -178,7 +178,7 @@ class TestPipelineDomestic:
 
 
 class TestPipelineWorld:
-    """World gold storage (no stale detection, single record)."""
+    """World gold storage with stale detection."""
 
     WORLD_RECORDS: list[dict[str, Any]] = [
         {
@@ -209,8 +209,8 @@ class TestPipelineWorld:
         assert sr.records_inserted == 1
         assert _count_rows(repo, "world_gold_prices") == 1
 
-    def test_skips_duplicate_on_reinsert(self, pipe: Pipeline, repo: Repository) -> None:
-        """Duplicate UNIQUE constraint skips silently."""
+    def test_skips_stale_on_reinsert(self, pipe: Pipeline, repo: Repository) -> None:
+        """Same spot_usd_oz value skips as stale."""
         result = CollectorResult(
             source="xaus.com",
             collector_name="world",
@@ -220,8 +220,32 @@ class TestPipelineWorld:
         pipe.process(result)
         sr = pipe.process(result)
         assert sr.records_inserted == 0
-        assert sr.records_skipped_duplicate == 1
+        assert sr.records_skipped_stale == 1
         assert _count_rows(repo, "world_gold_prices") == 1
+
+    def test_inserts_changed_value(self, pipe: Pipeline, repo: Repository) -> None:
+        """Changed spot_usd_oz inserts new record."""
+        result1 = CollectorResult(
+            source="xaus.com",
+            collector_name="world",
+            success=True,
+            data=self.WORLD_RECORDS,
+        )
+        pipe.process(result1)
+
+        changed = [dict(self.WORLD_RECORDS[0])]
+        changed[0]["spot_usd_oz"] = 4062.0
+        changed[0]["recorded_at"] = "2026-07-24T14:55:00Z"
+        result2 = CollectorResult(
+            source="xaus.com",
+            collector_name="world",
+            success=True,
+            data=changed,
+        )
+        sr = pipe.process(result2)
+        assert sr.records_inserted == 1
+        assert sr.records_skipped_stale == 0
+        assert _count_rows(repo, "world_gold_prices") == 2
 
 
 # ---------- Pipeline: FX Rate ----------
@@ -256,8 +280,8 @@ class TestPipelineFX:
         assert sr.records_inserted == 1
         assert _count_rows(repo, "exchange_rates") == 1
 
-    def test_skips_duplicate(self, pipe: Pipeline, repo: Repository) -> None:
-        """Duplicate FX rate skipped."""
+    def test_skips_stale_on_reinsert(self, pipe: Pipeline, repo: Repository) -> None:
+        """Same rate value skips as stale."""
         result = CollectorResult(
             source="exchangerate.fun",
             collector_name="fx",
@@ -267,7 +291,30 @@ class TestPipelineFX:
         pipe.process(result)
         sr = pipe.process(result)
         assert sr.records_inserted == 0
-        assert sr.records_skipped_duplicate == 1
+        assert sr.records_skipped_stale == 1
+
+    def test_inserts_changed_rate(self, pipe: Pipeline, repo: Repository) -> None:
+        """Changed rate inserts new record."""
+        result1 = CollectorResult(
+            source="exchangerate.fun",
+            collector_name="fx",
+            success=True,
+            data=self.FX_RECORDS,
+        )
+        pipe.process(result1)
+
+        changed = [dict(self.FX_RECORDS[0])]
+        changed[0]["rate"] = 24500.0
+        changed[0]["recorded_at"] = "2026-07-24T01:00:00Z"
+        result2 = CollectorResult(
+            source="exchangerate.fun",
+            collector_name="fx",
+            success=True,
+            data=changed,
+        )
+        sr = pipe.process(result2)
+        assert sr.records_inserted == 1
+        assert sr.records_skipped_stale == 0
 
 
 # ---------- Pipeline: Edge Cases ----------

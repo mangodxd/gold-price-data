@@ -121,6 +121,13 @@ class TestDomesticSummary:
         self._insert_tick(repo, "SJL1L10", 85700000, "2026-07-24T00:10:00Z")
         compute_domestic_summary(repo, "2026-07-24")
         assert repo.exists("gold_daily_summary", {"date": "2026-07-24"})
+        # Verify total_ticks
+        latest = repo.get_latest(
+            "gold_daily_summary",
+            {"date": "2026-07-24", "product_name": "SJL1L10"},
+        )
+        assert latest is not None
+        assert latest["total_ticks"] == 3
 
     def test_multiple_products(self, repo: Repository) -> None:
         """Multiple products each get a summary row."""
@@ -128,6 +135,12 @@ class TestDomesticSummary:
         self._insert_tick(repo, "SJ9999", 85000000, "2026-07-24T00:00:00Z")
         count = compute_domestic_summary(repo, "2026-07-24")
         assert count == 2
+        latest = repo.get_latest(
+            "gold_daily_summary",
+            {"date": "2026-07-24", "product_name": "SJL1L10"},
+        )
+        assert latest is not None
+        assert latest["total_ticks"] == 1
 
     def test_empty_day_returns_zero(self, repo: Repository) -> None:
         """No data for date returns 0."""
@@ -139,6 +152,12 @@ class TestDomesticSummary:
         self._insert_tick(repo, "SJL1L10", 85500000, "2026-07-24T00:00:00Z")
         count = compute_domestic_summary(repo, "2026-07-24")
         assert count == 1
+        latest = repo.get_latest(
+            "gold_daily_summary",
+            {"date": "2026-07-24", "product_name": "SJL1L10"},
+        )
+        assert latest is not None
+        assert latest["total_ticks"] == 1
 
     def test_ohlc_values_correct(self, repo: Repository) -> None:
         """OHLC values computed correctly for known sequence."""
@@ -154,6 +173,7 @@ class TestDomesticSummary:
         assert latest["highest_price"] == 85800000
         assert latest["lowest_price"] == 85500000
         assert latest["average_price"] == pytest.approx(85650000.0)
+        assert latest["total_ticks"] == 4
 
 
 # ---------- World Summary ----------
@@ -181,6 +201,9 @@ class TestWorldSummary:
         self._insert_tick(repo, 4061.7, "2026-07-24T14:00:00Z")
         self._insert_tick(repo, 4062.5, "2026-07-24T14:05:00Z")
         assert compute_world_summary(repo, "2026-07-24") is True
+        latest = repo.get_latest("world_gold_daily_summary", {"date": "2026-07-24"})
+        assert latest is not None
+        assert latest["total_ticks"] == 2
 
     def test_empty_day(self, repo: Repository) -> None:
         """No data returns False."""
@@ -198,3 +221,4 @@ class TestWorldSummary:
         assert latest["closing_price"] == 4062.0
         assert latest["highest_price"] == 4065.0
         assert latest["lowest_price"] == 4060.0
+        assert latest["total_ticks"] == 3

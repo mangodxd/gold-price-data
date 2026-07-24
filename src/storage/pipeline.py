@@ -39,6 +39,13 @@ class StorageResult:
     error_message: str | None = None
 
 
+# Stale detection config: (value_column, filters_for_get_latest)
+STALE_CONFIG: dict[str, tuple[str, dict[str, str]]] = {
+    "world": ("spot_usd_oz", {"source": "xaus.com"}),
+    "fx": ("rate", {"base_currency": "USD", "target_currency": "VND"}),
+}
+
+
 class Pipeline:
     """Orchestrates collector results into persistent storage.
 
@@ -113,6 +120,9 @@ class Pipeline:
     def _store_single_record(self, result: CollectorResult, table_name: str) -> StorageResult:
         """Store single-record collector data (world gold or FX).
 
+        Applies stale detection per record based on the configured
+        value column for each collector.
+
         Args:
             result: Collector result.
             table_name: Target database table.
@@ -121,9 +131,24 @@ class Pipeline:
             StorageResult with insert counts.
         """
         inserted = 0
+        skipped_stale = 0
         skipped_dup = 0
 
+        value_column, stale_filters = STALE_CONFIG.get(result.collector_name, (None, {}))
+
         for record in result.data:
+            if value_column and self.repository.is_value_stale(
+                table_name, stale_filters, value_column, record.get(value_column, 0)
+            ):
+                skipped_stale += 1
+                logger.info(
+                    "Skipped stale data for %s: %s=%.2f",
+                    result.source,
+                    value_column,
+                    record.get(value_column, 0),
+                )
+                continue
+
             if self.repository.create_or_ignore(table_name, record):
                 inserted += 1
             else:
@@ -134,6 +159,7 @@ class Pipeline:
             source=result.source,
             success=True,
             records_inserted=inserted,
+            records_skipped_stale=skipped_stale,
             records_skipped_duplicate=skipped_dup,
         )
 

@@ -27,7 +27,6 @@ TABLE_CONFIG: list[dict[str, Any]] = [
         "table": "gold_prices",
         "filename_template": "gold_prices_{date}.csv",
         "columns": [
-            "id",
             "source",
             "product_name",
             "category",
@@ -42,7 +41,6 @@ TABLE_CONFIG: list[dict[str, Any]] = [
         "table": "world_gold_prices",
         "filename_template": "world_gold_prices_{date}.csv",
         "columns": [
-            "id",
             "source",
             "spot_usd_oz",
             "per_gram_usd",
@@ -57,7 +55,6 @@ TABLE_CONFIG: list[dict[str, Any]] = [
         "table": "exchange_rates",
         "filename_template": "exchange_rates_{date}.csv",
         "columns": [
-            "id",
             "base_currency",
             "target_currency",
             "rate",

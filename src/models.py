@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Float, Integer, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Float, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -20,8 +20,8 @@ class GoldPrice(Base):
     product_name: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     purity: Mapped[str | None] = mapped_column(Text, nullable=True)
-    buy_price: Mapped[int] = mapped_column(Integer, nullable=False)
-    sell_price: Mapped[int] = mapped_column(Integer, nullable=False)
+    buy_price: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sell_price: Mapped[int] = mapped_column(BigInteger, nullable=False)
     recorded_at: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(
         Text,
@@ -91,13 +91,14 @@ class GoldDailySummary(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     date: Mapped[str] = mapped_column(Text, nullable=False)
     product_name: Mapped[str] = mapped_column(Text, nullable=False)
-    opening_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    closing_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    highest_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    lowest_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    opening_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    closing_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    highest_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    lowest_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     average_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     volatility: Mapped[float | None] = mapped_column(Float, nullable=True)
     stddev: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_ticks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(
         Text,
         default=lambda: datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -114,7 +115,7 @@ class WorldGoldDailySummary(Base):
     __tablename__ = "world_gold_daily_summary"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    date: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    date: Mapped[str] = mapped_column(Text, nullable=False)
     opening_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     closing_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     highest_price: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -122,10 +123,13 @@ class WorldGoldDailySummary(Base):
     average_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     volatility: Mapped[float | None] = mapped_column(Float, nullable=True)
     stddev: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_ticks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(
         Text,
         default=lambda: datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
+
+    __table_args__ = (UniqueConstraint("date", name="uq_world_gold_daily_summary_date"),)
 
 
 class ApiLog(Base):

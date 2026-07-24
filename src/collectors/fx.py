@@ -25,14 +25,3 @@ class FXCollector(BaseCollector):
             List with one record dict.
         """
         return parse_response(raw)
-
-    def validate(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Return parsed items as-is. Parsing layer already validates.
-
-        Args:
-            items: Parsed record dicts.
-
-        Returns:
-            List of valid record dicts unchanged.
-        """
-        return items

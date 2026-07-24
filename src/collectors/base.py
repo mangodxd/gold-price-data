@@ -44,7 +44,7 @@ class CollectorResult:
 class BaseCollector(ABC):
     """Abstract base for all gold price collectors.
 
-    Subclasses must implement fetch(), parse(), and validate().
+    Subclasses must implement parse().
     The collect() template method orchestrates fetch -> parse -> validate
     with retry logic and timing.
 
@@ -72,9 +72,11 @@ class BaseCollector(ABC):
             List of parsed record dicts.
         """
 
-    @abstractmethod
     def validate(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate parsed records, filtering out invalid ones.
+
+        Default implementation returns items as-is. Override in
+        subclass if post-parse validation is needed.
 
         Args:
             items: Parsed records from parse().
@@ -82,9 +84,13 @@ class BaseCollector(ABC):
         Returns:
             List of valid record dicts.
         """
+        return items
 
     async def _fetch_with_retry(self, client: httpx.AsyncClient) -> dict[str, Any]:
         """Fetch with exponential backoff retry.
+
+        Retries on: timeout, network error, 429 (rate limit), 5xx.
+        Fails fast on: 4xx (except 429).
 
         Args:
             client: Shared httpx async client.
@@ -112,17 +118,18 @@ class BaseCollector(ABC):
                     self.max_retries,
                 )
             except httpx.HTTPStatusError as e:
-                if e.response.status_code >= 500:
+                status = e.response.status_code
+                if status >= 500 or status == 429:
                     last_error = e
                     logger.warning(
                         "%s attempt %d/%d got %d",
                         self.source,
                         attempt,
                         self.max_retries,
-                        e.response.status_code,
+                        status,
                     )
                 else:
-                    raise FetchError(f"{self.source} returned {e.response.status_code}: {e}") from e
+                    raise FetchError(f"{self.source} returned {status}: {e}") from e
             except httpx.HTTPError as e:
                 last_error = e
                 logger.warning(

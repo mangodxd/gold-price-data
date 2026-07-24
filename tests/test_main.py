@@ -163,7 +163,15 @@ class TestRunCollectPartialFail:
         status_code=200,
         response_time_ms=100,
         data=[
-            {"source": "xaus.com", "spot_usd_oz": 4061.7, "recorded_at": "2026-07-24T14:50:09.811Z"}
+            {
+                "source": "xaus.com",
+                "spot_usd_oz": 4061.7,
+                "per_gram_usd": 130.59,
+                "per_kg_usd": 130590.0,
+                "currency": "USD",
+                "unit": "troy_oz",
+                "recorded_at": "2026-07-24T14:50:09.811Z",
+            }
         ],
     )
 

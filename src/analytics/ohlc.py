@@ -117,7 +117,7 @@ def compute_domestic_summary(repo: Repository, target_date: str | None = None) -
 
     raw = repo.get_raw_records_in_range("gold_prices", start_utc, end_utc)
     if not raw:
-        logger.warning("No domestic gold data for %s — skipping", target_date)
+        logger.info("No domestic gold data for %s — skipping (may be weekend/holiday)", target_date)
         return 0
 
     # Group by product_name, preserving order
@@ -145,6 +145,7 @@ def compute_domestic_summary(repo: Repository, target_date: str | None = None) -
             "average_price": ohlc["average"],
             "volatility": ohlc["volatility"],
             "stddev": ohlc["stddev"],
+            "total_ticks": len(prices),
             "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
 
@@ -157,31 +158,6 @@ def compute_domestic_summary(repo: Repository, target_date: str | None = None) -
         records_inserted,
     )
     return records_inserted
-
-
-def run_analytics(target_date: str | None = None) -> None:
-    """Run full analytics pipeline for a given date.
-
-    Computes domestic and world gold summaries, then exports CSV files.
-
-    Args:
-        target_date: Vietnam date string (YYYY-MM-DD). Defaults to yesterday.
-    """
-    logging.basicConfig(level=logging.INFO)
-    repo = Repository()
-
-    domestic_count = compute_domestic_summary(repo, target_date)
-    world_inserted = compute_world_summary(repo, target_date)
-
-    logger.info(
-        "Analytics complete: domestic=%d products, world=%s",
-        domestic_count,
-        "inserted" if world_inserted else "no data",
-    )
-
-
-if __name__ == "__main__":
-    run_analytics()
 
 
 def compute_world_summary(repo: Repository, target_date: str | None = None) -> bool:
@@ -201,7 +177,7 @@ def compute_world_summary(repo: Repository, target_date: str | None = None) -> b
 
     raw = repo.get_raw_records_in_range("world_gold_prices", start_utc, end_utc)
     if not raw:
-        logger.warning("No world gold data for %s — skipping", target_date)
+        logger.info("No world gold data for %s — skipping (may be weekend/holiday)", target_date)
         return False
 
     prices = [r["spot_usd_oz"] for r in raw]
@@ -218,6 +194,7 @@ def compute_world_summary(repo: Repository, target_date: str | None = None) -> b
         "average_price": ohlc["average"],
         "volatility": ohlc["volatility"],
         "stddev": ohlc["stddev"],
+        "total_ticks": len(prices),
         "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
@@ -227,3 +204,30 @@ def compute_world_summary(repo: Repository, target_date: str | None = None) -> b
 
     logger.info("World gold summary for %s: already exists", target_date)
     return False
+
+
+def run_analytics(repo: Repository | None = None, target_date: str | None = None) -> None:
+    """Run full analytics pipeline for a given date.
+
+    Computes domestic and world gold summaries.
+
+    Args:
+        repo: Repository instance. If None, creates a new one.
+        target_date: Vietnam date string (YYYY-MM-DD). Defaults to yesterday.
+    """
+    if repo is None:
+        repo = Repository()
+
+    domestic_count = compute_domestic_summary(repo, target_date)
+    world_inserted = compute_world_summary(repo, target_date)
+
+    logger.info(
+        "Analytics complete: domestic=%d products, world=%s",
+        domestic_count,
+        "inserted" if world_inserted else "no data",
+    )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    run_analytics()

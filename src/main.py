@@ -133,7 +133,10 @@ def run_collect() -> int:
 
 
 def run_analytics() -> int:
-    """Execute the analytics pipeline.
+    """Execute the analytics and CSV export pipeline.
+
+    Delegates to src.analytics.ohlc.run_analytics() for OHLC
+    computation, then exports daily CSVs.
 
     Returns:
         0 on success, 1 on failure.
@@ -142,19 +145,11 @@ def run_analytics() -> int:
     engine = create_db_engine()
     repo = Repository(engine=engine)
 
-    from src.analytics.ohlc import compute_domestic_summary, compute_world_summary
-    from src.export.csv_writer import export_daily_csvs
+    from src.analytics.ohlc import run_analytics as _run_analytics_core
+    from src.export.csv_writer import export_daily_csvs as _export_csvs
 
-    domestic_count = compute_domestic_summary(repo)
-    world_result = compute_world_summary(repo)
-
-    logger.info(
-        "Analytics: domestic=%d products, world=%s",
-        domestic_count,
-        "inserted" if world_result else "no data",
-    )
-
-    csv_files = export_daily_csvs(repo)
+    _run_analytics_core(repo=repo)
+    csv_files = _export_csvs(repo)
     logger.info("Exported %d CSV files", len(csv_files))
 
     return 0
@@ -171,9 +166,9 @@ def run_export() -> int:
     engine = create_db_engine()
     repo = Repository(engine=engine)
 
-    from src.export.csv_writer import export_daily_csvs
+    from src.export.csv_writer import export_daily_csvs as _export_csvs
 
-    csv_files = export_daily_csvs(repo)
+    csv_files = _export_csvs(repo)
     logger.info("Exported %d CSV files", len(csv_files))
     return 0
 
@@ -192,6 +187,10 @@ def main() -> int:
         return run_analytics()
     if mode == "export":
         return run_export()
+
+    if mode != "collect":
+        logger.warning("Unknown mode '%s' — falling back to collect", mode)
+
     return run_collect()
 
 

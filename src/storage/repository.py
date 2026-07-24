@@ -225,7 +225,7 @@ class Repository:
     ) -> bool:
         """Check if the latest record has identical prices (stale data).
 
-        Used only for domestic gold prices where we compare
+        Used for domestic gold prices where we compare
         buy and sell prices.
 
         Args:
@@ -242,3 +242,30 @@ class Repository:
         if latest is None:
             return False
         return latest.get("buy_price") == current_buy and latest.get("sell_price") == current_sell
+
+    def is_value_stale(
+        self,
+        table_name: str,
+        filters: dict[str, Any],
+        column: str,
+        current_value: int | float,
+    ) -> bool:
+        """Check if the latest record has the same value for a column (stale data).
+
+        Used for world gold (spot_usd_oz) and FX (rate) where
+        a single value determines staleness.
+
+        Args:
+            table_name: Name of the target table.
+            filters: Filter to identify the record
+                (e.g. {'source': 'xaus.com'}).
+            column: Column name to compare.
+            current_value: Current value to compare.
+
+        Returns:
+            True if the latest record has the same value.
+        """
+        latest = self.get_latest(table_name, filters)
+        if latest is None:
+            return False
+        return float(latest.get(column, 0)) == float(current_value)

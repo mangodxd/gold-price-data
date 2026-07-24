@@ -44,15 +44,6 @@ def infer_category(type_code: str) -> str | None:
     return CATEGORY_MAP.get(prefix)
 
 
-def infer_purity(type_code: str) -> None:  # noqa: ARG001
-    """Purity not available from vang.today API.
-
-    Returns:
-        None always.
-    """
-    return None
-
-
 def parse_timestamp(unix_ts: int) -> str:
     """Convert Unix timestamp to ISO 8601 UTC.
 
@@ -128,7 +119,7 @@ def parse_item(item: dict[str, Any]) -> dict[str, Any] | None:
         "source": "vang.today",
         "product_name": type_code,
         "category": infer_category(type_code),
-        "purity": infer_purity(type_code),
+        "purity": None,
         "buy_price": int(item["buy"]),
         "sell_price": int(item["sell"]),
         "recorded_at": parse_timestamp(int(item["update_time"])),
