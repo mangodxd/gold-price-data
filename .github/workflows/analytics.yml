@@ -8,6 +8,8 @@ on:
 jobs:
   analytics:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       PYTHONPATH: .
       DATABASE_PATH: data/gold_pipeline.db
