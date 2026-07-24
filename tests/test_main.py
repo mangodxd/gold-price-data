@@ -100,3 +100,105 @@ class TestRunCollect:
         """run_collect returns 0 on success."""
         exit_code = run_collect()
         assert exit_code == 0
+
+
+class TestRunCollectAllFail:
+    """All collectors fail scenario."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_all_fail(self) -> Any:
+        """Mock all collectors to fail."""
+        patcher = patch(
+            "src.main._run_collectors",
+            new=AsyncMock(
+                return_value=[
+                    CollectorResult(
+                        source="vang.today",
+                        collector_name="domestic",
+                        success=False,
+                        status_code=500,
+                        error_message="Server error",
+                    ),
+                    CollectorResult(
+                        source="xaus.com",
+                        collector_name="world",
+                        success=False,
+                        status_code=503,
+                        error_message="Unavailable",
+                    ),
+                    CollectorResult(
+                        source="exchangerate.fun",
+                        collector_name="fx",
+                        success=False,
+                        status_code=500,
+                        error_message="Timeout",
+                    ),
+                ]
+            ),
+        )
+        patcher.start()
+        yield
+        patcher.stop()
+
+    def test_returns_one_when_all_fail(self) -> None:
+        """run_collect returns 1 when all collectors fail."""
+        exit_code = run_collect()
+        assert exit_code == 1
+
+
+class TestRunCollectPartialFail:
+    """Partial collector failure."""
+
+    DOMESTIC_FAIL = CollectorResult(
+        source="vang.today",
+        collector_name="domestic",
+        success=False,
+        status_code=500,
+        error_message="Server error",
+    )
+    WORLD_OK = CollectorResult(
+        source="xaus.com",
+        collector_name="world",
+        success=True,
+        status_code=200,
+        response_time_ms=100,
+        data=[
+            {"source": "xaus.com", "spot_usd_oz": 4061.7, "recorded_at": "2026-07-24T14:50:09.811Z"}
+        ],
+    )
+
+    @pytest.fixture(autouse=True)
+    def _mock_partial(self) -> Any:
+        """Mock domestic fail, world + fx succeed."""
+        patcher = patch(
+            "src.main._run_collectors",
+            new=AsyncMock(
+                return_value=[
+                    self.DOMESTIC_FAIL,
+                    self.WORLD_OK,
+                    CollectorResult(
+                        source="exchangerate.fun",
+                        collector_name="fx",
+                        success=True,
+                        status_code=200,
+                        response_time_ms=80,
+                        data=[
+                            {
+                                "base_currency": "USD",
+                                "target_currency": "VND",
+                                "rate": 24350.0,
+                                "recorded_at": "2026-07-24T00:00:00Z",
+                            }
+                        ],
+                    ),
+                ]
+            ),
+        )
+        patcher.start()
+        yield
+        patcher.stop()
+
+    def test_returns_zero_on_partial(self) -> None:
+        """run_collect returns 0 if any collector succeeded."""
+        exit_code = run_collect()
+        assert exit_code == 0
