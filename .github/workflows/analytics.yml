@@ -9,6 +9,7 @@ jobs:
   analytics:
     runs-on: ubuntu-latest
     env:
+      PYTHONPATH: .
       DATABASE_PATH: data/gold_pipeline.db
       LOG_LEVEL: INFO
 
