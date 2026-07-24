@@ -32,10 +32,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Export and commit hourly data snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TODAY=$(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d)
           HOUR=$(TZ=Asia/Ho_Chi_Minh date +%H:%M)
           TARGET_DATE=$TODAY python src/main.py export
           git add -f exports/*.csv
-          git diff --staged --quiet || git commit -m "chore(export): hourly snapshot for $TODAY at $HOUR UTC+7"
-          git push
+          git diff --staged --quiet || {
+            git commit -m "chore(export): hourly snapshot for $TODAY at $HOUR UTC+7"
+            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+            git push
+          }
