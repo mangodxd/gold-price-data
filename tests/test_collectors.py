@@ -36,25 +36,25 @@ class TestDomesticCollector:
 
     SAMPLE_RESPONSE: dict[str, Any] = {
         "success": True,
-        "current_time": 1732456789,
-        "data": [
-            {
-                "type_code": "SJL1L10",
+        "timestamp": 1732456789,
+        "prices": {
+            "SJL1L10": {
+                "name": "SJC 1L 10L",
                 "buy": 85500000,
                 "sell": 88000000,
                 "change_buy": 100000,
                 "change_sell": 100000,
-                "update_time": 1732456789,
+                "currency": "VND",
             },
-            {
-                "type_code": "SJ9999",
+            "SJ9999": {
+                "name": "SJC Ring",
                 "buy": 85000000,
                 "sell": 87500000,
                 "change_buy": 0,
                 "change_sell": 50000,
-                "update_time": 1732456789,
+                "currency": "VND",
             },
-        ],
+        },
     }
 
     @pytest.fixture
@@ -130,10 +130,10 @@ class TestDomesticCollector:
     async def test_collect_with_mock_empty_data(
         self, collector: DomesticCollector, httpx_mock: Any
     ) -> None:
-        """Collect with empty data array returns no data."""
+        """Collect with empty prices dict returns no data."""
         httpx_mock.add_response(
             url=collector.endpoint,
-            json={"success": True, "current_time": 1732456789, "data": []},
+            json={"success": True, "timestamp": 1732456789, "prices": {}},
             status_code=200,
         )
         result = await collector.collect()

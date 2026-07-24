@@ -20,6 +20,7 @@ quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
 
 [tool.coverage.run]

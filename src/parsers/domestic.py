@@ -59,16 +59,16 @@ def parse_timestamp(unix_ts: int) -> str:
     return datetime.fromtimestamp(unix_ts, tz=UTC).isoformat()
 
 
-def validate_item(item: dict[str, Any]) -> bool:
+def validate_item(type_code: str, item: dict[str, Any]) -> bool:
     """Validate a single domestic gold price record.
 
     Args:
-        item: Raw item dict from API.
+        type_code: Product type code (e.g. 'SJL1L10').
+        item: Item dict from the prices dict.
 
     Returns:
         True if valid, False otherwise.
     """
-    type_code = item.get("type_code", "")
     if type_code in EXCLUDED_CODES:
         logger.warning("Skipping excluded code: %s", type_code)
         return False
@@ -93,27 +93,25 @@ def validate_item(item: dict[str, Any]) -> bool:
         )
         return False
 
-    update_time = item.get("update_time")
-    if not isinstance(update_time, (int, float)) or update_time <= 0:
-        logger.warning("Invalid update_time for %s: %s", type_code, update_time)
-        return False
-
     return True
 
 
-def parse_item(item: dict[str, Any]) -> dict[str, Any] | None:
+def parse_item(type_code: str, item: dict[str, Any], timestamp: int) -> dict[str, Any] | None:
     """Parse a single API item into a record dict.
 
+    In the new API format, type_code is the key in the prices dict,
+    and timestamps are at the top level (not per item).
+
     Args:
-        item: Raw item dict from API.
+        type_code: Product type code (dict key).
+        item: Item dict from the prices dict.
+        timestamp: Top-level API response timestamp.
 
     Returns:
         Parsed record dict or None if invalid.
     """
-    if not validate_item(item):
+    if not validate_item(type_code, item):
         return None
-
-    type_code = item["type_code"]
 
     return {
         "source": "vang.today",
@@ -122,12 +120,22 @@ def parse_item(item: dict[str, Any]) -> dict[str, Any] | None:
         "purity": None,
         "buy_price": int(item["buy"]),
         "sell_price": int(item["sell"]),
-        "recorded_at": parse_timestamp(int(item["update_time"])),
+        "recorded_at": parse_timestamp(timestamp),
     }
 
 
 def parse_response(raw: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse full vang.today API response.
+
+    The API returns prices as a dict keyed by type_code:
+    {
+        "success": true,
+        "timestamp": 1784912404,
+        "prices": {
+            "SJ9999": {"name": "...", "buy": ..., "sell": ..., "currency": "VND"},
+            ...
+        }
+    }
 
     Args:
         raw: Raw JSON response dict.
@@ -136,26 +144,34 @@ def parse_response(raw: dict[str, Any]) -> list[dict[str, Any]]:
         List of parsed and validated record dicts.
 
     Raises:
-        ValidationError: If response structure is invalid.
+        ValidationError: If response structure is fundamentally broken.
     """
     if not raw.get("success"):
         raise ValidationError(f"API returned success=false: {raw.get('error', 'unknown')}")
 
-    data = raw.get("data")
-    if data is None:
-        logger.warning("No 'data' key in vang.today response")
+    timestamp = raw.get("timestamp")
+    if not isinstance(timestamp, (int, float)) or timestamp <= 0:
+        logger.warning("Invalid or missing 'timestamp' in vang.today response")
         return []
 
-    if not isinstance(data, list):
-        raise ValidationError(f"Expected 'data' to be list, got {type(data).__name__}")
+    prices = raw.get("prices")
+    if prices is None:
+        logger.warning("No 'prices' key in vang.today response")
+        return []
 
-    if not data:
-        logger.warning("Empty data array from vang.today")
+    if not isinstance(prices, dict):
+        raise ValidationError(f"Expected 'prices' to be dict, got {type(prices).__name__}")
+
+    if not prices:
+        logger.warning("Empty prices dict from vang.today")
         return []
 
     records: list[dict[str, Any]] = []
-    for item in data:
-        parsed = parse_item(item)
+    timestamp_int = int(timestamp)
+    for type_code, item in prices.items():
+        if not isinstance(item, dict):
+            continue
+        parsed = parse_item(type_code, item, timestamp_int)
         if parsed is not None:
             records.append(parsed)
 

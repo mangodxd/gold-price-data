@@ -17,25 +17,25 @@ from src.storage.repository import Repository
 
 DOMESTIC_RESPONSE: dict[str, Any] = {
     "success": True,
-    "current_time": 1732456789,
-    "data": [
-        {
-            "type_code": "SJL1L10",
+    "timestamp": 1732456789,
+    "prices": {
+        "SJL1L10": {
+            "name": "SJC 1L 10L",
             "buy": 85500000,
             "sell": 88000000,
             "change_buy": 0,
             "change_sell": 0,
-            "update_time": 1732456789,
+            "currency": "VND",
         },
-        {
-            "type_code": "SJ9999",
+        "SJ9999": {
+            "name": "SJC Ring",
             "buy": 85000000,
             "sell": 87500000,
             "change_buy": 0,
             "change_sell": 0,
-            "update_time": 1732456789,
+            "currency": "VND",
         },
-    ],
+    },
 }
 
 WORLD_RESPONSE: dict[str, Any] = {
