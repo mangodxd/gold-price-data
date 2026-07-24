@@ -86,7 +86,7 @@
 
 - ~288 collection runs/day
 - ~1 analytics run/day
-- ~1,000+ API calls/month across all collectors
+- ~26,000 API calls/month across all collectors (3 APIs × 288 runs/day × 30 days)
 - Entirely GitHub Actions free tier (no server, no cost)
 
 ## 🚀 Quick Start
@@ -136,7 +136,7 @@ pytest tests/ -v
 │   ├── models.py            # SQLAlchemy ORM (6 tables)
 │   ├── exceptions.py        # Custom exception hierarchy
 │   └── main.py              # Orchestrator entry point
-├── tests/                   # 110 tests, 90% coverage
+├── tests/                   # 109 tests, 90% coverage
 ├── docs/                    # Architecture docs
 ├── exports/                 # Daily CSV exports
 ├── requirements.txt
