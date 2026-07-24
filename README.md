@@ -35,7 +35,7 @@
 │  GitHub Actions (cron)                                   │
 │  ┌──────────────────────┐  ┌────────────────────────┐   │
 │  │  collect.yml         │  │  analytics.yml         │   │
-│  │  every 5 min         │  │  daily 00:05 UTC+7     │   │
+│  │  every 5 min         │  │  every hour     │   │
 │  └──────────┬───────────┘  └───────────┬────────────┘   │
 └─────────────┼──────────────────────────┼────────────────┘
               │                          │
@@ -81,11 +81,11 @@
 | Workflow | Cron | Description |
 |---|---|---|
 | **collect.yml** | `*/5 * * * *` | Every 5 minutes, 24/7 |
-| **analytics.yml** | `5 17 * * *` | Daily at 00:05 UTC+7 |
+| **analytics.yml** | `5 * * * *` | Every hour, 24/7 |
 | **ci.yml** | Push / PR to `master` | Lint (ruff) + test (pytest) |
 
 - ~288 collection runs/day
-- ~1 analytics run/day
+- ~24 analytics + export commits/day (hourly CSV snapshots)
 - ~26,000 API calls/month across all collectors (3 APIs × 288 runs/day × 30 days)
 - Entirely GitHub Actions free tier (no server, no cost)
 
@@ -116,7 +116,7 @@ pytest tests/ -v
 ```
 ├── .github/workflows/
 │   ├── collect.yml          # Every 5 min collection
-│   ├── analytics.yml        # Daily OHLC + CSV export
+│   ├── analytics.yml        # Hourly OHLC + CSV export
 │   └── ci.yml               # Lint + test on push
 ├── src/
 │   ├── collectors/          # 3 async HTTP collectors

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +93,7 @@ def export_daily_csvs(repo: Repository, target_date: str | None = None) -> list[
         List of file paths that were written.
     """
     if target_date is None:
-        target_date = yesterday_vietnam()
+        target_date = os.environ.get("TARGET_DATE") or yesterday_vietnam()
 
     start_utc, end_utc = vietnam_date_boundary(target_date)
     written: list[Path] = []
