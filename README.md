@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/github/actions/workflow/status/mangodxd/gold-price-data/.github/workflows/ci.yml?branch=master&label=CI&logo=github&style=flat" alt="CI">
-  <img src="https://img.shields.io/badge/coverage-90%25-brightgreen?style=flat" alt="Coverage">
+  <img src="https://img.shields.io/badge/coverage-85%25-yellow?style=flat" alt="Coverage">
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat" alt="License">
 </div>
 
@@ -81,13 +81,15 @@
 | Workflow | Cron | Description |
 |---|---|---|
 | **collect.yml** | `*/5 * * * *` | Every 5 minutes, 24/7 |
-| **analytics.yml** | `5 * * * *` | Every hour, 24/7 |
+| **analytics.yml** | `*/30 * * * *` | Every 30 min — dynamic commit when data changes |
 | **ci.yml** | Push / PR to `master` | Lint (ruff) + test (pytest) |
 
 - ~288 collection runs/day
-- ~24 snapshot commits/day (hourly combined CSV)
+- ~20-40* snapshot commits/day (varies with market activity — only when prices change)
 - ~26,000 API calls/month across all collectors (3 APIs × 288 runs/day × 30 days)
 - Entirely GitHub Actions free tier (no server, no cost)
+
+*Dynamic frequency: runs every 30 min but only commits if data changed since last commit. Active trading hours produce more commits; quiet periods produce fewer. No hard-coded cadence.
 
 ## 🚀 Quick Start
 
@@ -116,7 +118,7 @@ pytest tests/ -v
 ```
 ├── .github/workflows/
 │   ├── collect.yml          # Every 5 min collection
-│   ├── analytics.yml        # Hourly OHLC + snapshot export
+│   ├── analytics.yml        # Every 30 min — dynamic snapshot commit
 │   └── ci.yml               # Lint + test on push
 ├── src/
 │   ├── collectors/          # 3 async HTTP collectors
@@ -132,11 +134,11 @@ pytest tests/ -v
 │   ├── analytics/
 │   │   └── ohlc.py          # OHLC + StdDev computation
 │   ├── export/
-│   │   └── csv_writer.py    # Daily CSV export
+│   │   └── csv_writer.py    # Combined snapshot export
 │   ├── models.py            # SQLAlchemy ORM (6 tables)
 │   ├── exceptions.py        # Custom exception hierarchy
 │   └── main.py              # Orchestrator entry point
-├── tests/                   # 109 tests, 90% coverage
+├── tests/                   # 109 tests, 85% coverage
 ├── docs/                    # Architecture docs
 ├── exports/                 # Hourly CSV snapshots
 ├── requirements.txt
